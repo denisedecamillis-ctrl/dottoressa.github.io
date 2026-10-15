@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Bussola dei Sintomi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: one narrow column, a pharmacy counter. Header with the green cross, one step card at a time, progress rail on top. */
+:root {
+  --bg: #EEF3F0;
+  --surface: #FFFFFF;
+  --ink: #17251F;
+  --muted: #56675F;
+  --rule: #D3DED8;
+  --cross: #0F8A5F;         /* pharmacy green */
+  --cross-soft: #DDF0E7;
+  --alert: #C2362B;
+  --alert-soft: #FBE6E3;
+  --warn: #9A6400;
+  --warn-soft: #FCF0D6;
+  --f-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0F1714; --surface: #17221D; --ink: #E5EFEA; --muted: #98ABA2; --rule: #2A3A33;
+    --cross: #3FC28E; --cross-soft: #183A2C; --alert: #FF7B6E; --alert-soft: #3A1D1A;
+    --warn: #F0BC5A; --warn-soft: #3A2E15;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0F1714; --surface: #17221D; --ink: #E5EFEA; --muted: #98ABA2; --rule: #2A3A33;
+  --cross: #3FC28E; --cross-soft: #183A2C; --alert: #FF7B6E; --alert-soft: #3A1D1A;
+  --warn: #F0BC5A; --warn-soft: #3A2E15;
+}
+
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.55;
+  padding-block: 0 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+header { display: flex; align-items: center; gap: 14px; padding-block: 22px 4px; }
+.cross { width: 40px; height: 40px; position: relative; flex: none; }
+.cross::before, .cross::after { content: ""; position: absolute; background: var(--cross); border-radius: 3px; }
+.cross::before { left: 13px; top: 0; width: 14px; height: 40px; }
+.cross::after { top: 13px; left: 0; height: 14px; width: 40px; }
+header h1 { font-family: var(--f-display); font-weight: 800; font-size: 1.7rem; line-height: 1; margin: 0; letter-spacing: -.01em; }
+header p { margin: 4px 0 0; color: var(--muted); font-size: .9rem; }
+
+.rail { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.rail i { height: 5px; border-radius: 3px; background: var(--rule); transition: background .3s; }
+.rail i.on { background: var(--cross); }
+.steplabel { font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.card h2 { font-family: var(--f-display); font-weight: 800; font-size: 1.55rem; line-height: 1.15; margin: 0; text-wrap: balance; }
+.card h3 { font-family: var(--f-display); font-weight: 600; font-size: 1.1rem; margin: 0; }
+.card p { margin: 0; max-width: 62ch; }
+.lead { color: var(--muted); }
+
+fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt { position: relative; }
+.opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.opt span {
+  display: block; padding: 9px 14px; border: 1.5px solid var(--rule); border-radius: 10px;
+  background: var(--surface); cursor: pointer; transition: border-color .15s, background .15s; line-height: 1.3;
+}
+.opt input:checked + span { border-color: var(--cross); background: var(--cross-soft); font-weight: 700; }
+.opt input:focus-visible + span { outline: 3px solid var(--cross); outline-offset: 2px; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.list .opt span { padding: 12px 14px 12px 44px; position: relative; }
+.list .opt span::before {
+  content: ""; position: absolute; left: 14px; top: 50%; translate: 0 -50%;
+  width: 18px; height: 18px; border: 1.5px solid var(--muted); border-radius: 5px; background: var(--surface);
+}
+.list .opt input:checked + span::before { background: var(--cross); border-color: var(--cross); box-shadow: inset 0 0 0 3px var(--surface); }
+.list.danger .opt input:checked + span { border-color: var(--alert); background: var(--alert-soft); }
+.list.danger .opt input:checked + span::before { background: var(--alert); border-color: var(--alert); }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+button {
+  font: 700 1rem var(--f-body); border-radius: 999px; padding: 12px 22px; cursor: pointer; border: 1.5px solid transparent;
+}
+button.primary { background: var(--cross); color: var(--surface); }
+button.primary:disabled { opacity: .45; cursor: not-allowed; }
+button.ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.req { font-size: .85rem; color: var(--muted); }
+
+.notice { border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.notice.alert { background: var(--alert-soft); color: var(--ink); border-left: 4px solid var(--alert); }
+.notice.warn { background: var(--warn-soft); border-left: 4px solid var(--warn); }
+.notice.info { background: var(--cross-soft); border-left: 4px solid var(--cross); }
+.notice b.t { font-family: var(--f-display); font-size: 1.05rem; }
+.notice ul { margin: 0; padding-left: 20px; }
+.big { font-family: var(--f-display); font-weight: 800; font-size: 2.1rem; color: var(--alert); line-height: 1; }
+
+.match { display: flex; flex-direction: column; gap: 8px; }
+.match .row { display: grid; grid-template-columns: 9.5rem 1fr 3.2rem; gap: 10px; align-items: center; font-size: .95rem; }
+.bar { height: 10px; border-radius: 5px; background: var(--rule); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--cross); border-radius: 5px; }
+.row.top { font-weight: 700; }
+.row:not(.top) .bar i { background: var(--muted); opacity: .55; }
+.pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+.meds { display: flex; flex-direction: column; gap: 10px; }
+.med { border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.med .ing { font-weight: 700; }
+.med .for { color: var(--muted); font-size: .92rem; }
+.med .w { font-size: .92rem; }
+.med .w::before { content: "Attenzione: "; font-weight: 700; color: var(--warn); }
+ul.care { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+
+footer { color: var(--muted); font-size: .82rem; max-width: 62ch; }
+
+@media (max-width: 480px) {
+  .card { padding: 18px; }
+  .match .row { grid-template-columns: 1fr 3rem; }
+  .match .row .bar { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="cross" aria-hidden="true"></div>
+    <div>
+      <h1>Bussola dei Sintomi</h1>
+      <p>Cinque domande per orientarti tra i disturbi più comuni</p>
+    </div>
+  </header>
+  <div class="rail" id="rail" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+  <main id="app"></main>
+  <footer>Questo quiz è uno strumento informativo e non sostituisce il parere del medico o del farmacista. Non fa diagnosi. Prima di prendere un farmaco leggi sempre il foglietto illustrativo. In caso di emergenza chiama il 112.</footer>
+</div>
+
+<script>
+(() => {
+  const RED_FLAGS = [
+    { id: "rf_respiro", t: "Fatica a respirare o fiato corto anche a riposo", em: true },
+    { id: "rf_petto",   t: "Dolore o peso al petto", em: true },
+    { id: "rf_ictus",   t: "Bocca storta, debolezza o formicolio a un braccio o una gamba, difficoltà a parlare", em: true },
+    { id: "rf_testa",   t: "Mal di testa improvviso e fortissimo, il peggiore della tua vita", em: true },
+    { id: "rf_collo",   t: "Collo rigido con febbre, oppure confusione o sonnolenza insolita", em: true },
+    { id: "rf_sangue",  t: "Sangue nel vomito, nelle feci o quando tossisci", em: true },
+    { id: "rf_febbre",  t: "Febbre sopra 39 °C da più di 3 giorni", em: false },
+    { id: "rf_bere",    t: "Non riesci a bere o a trattenere liquidi, urini pochissimo", em: false },
+    { id: "rf_peso",    t: "Hai perso peso senza motivo nelle ultime settimane", em: false },
+  ];
+
+  const SYMPTOMS = [
+    { id: "naso", t: "Naso che cola o chiuso" },
+    { id: "starnuti", t: "Starnuti frequenti" },
+    { id: "occhi", t: "Occhi che prudono o lacrimano" },
+    { id: "gola", t: "Mal di gola, fa male deglutire" },
+    { id: "tosse", t: "Tosse" },
+    { id: "febbre_bassa", t: "Febbre leggera, fino a 38 °C" },
+    { id: "febbre_alta", t: "Febbre sopra 38 °C, arrivata all'improvviso" },
+    { id: "dolori", t: "Dolori a muscoli e ossa, brividi" },
+    { id: "stanchezza", t: "Stanchezza forte, voglia solo di stare a letto" },
+    { id: "testa", t: "Mal di testa" },
+    { id: "fascia", t: "Testa stretta come da una fascia, collo e spalle tesi" },
+    { id: "bruciore", t: "Bruciore dietro lo sterno o sapore acido in bocca" },
+    { id: "pasto", t: "Peggiora dopo mangiato o quando ti sdrai" },
+    { id: "nausea", t: "Nausea o vomito" },
+    { id: "diarrea", t: "Diarrea" },
+    { id: "stagione", t: "Ti succede ogni anno nello stesso periodo, o vicino a polvere e animali" },
+  ];
+
+  const PARACETAMOLO = { ing: "Paracetamolo", w: "Non superare la dose del foglietto e non sommarlo ad altri prodotti che lo contengono già, come molti antinfluenzali in bustina. Chiedi al farmacista se hai problemi al fegato o bevi alcolici." };
+  const IBUPROFENE = { ing: "Ibuprofene", w: "Prendilo a stomaco pieno. Evitalo se hai ulcera o gastrite, problemi ai reni o al cuore, se prendi anticoagulanti o se l'aspirina ti ha mai dato asma." };
+
+  const CONDITIONS = {
+    raffreddore: {
+      name: "Raffreddore",
+      w: { naso: 3, starnuti: 2, gola: 1, tosse: 1, febbre_bassa: 1, stanchezza: .5, febbre_alta: -2, dolori: -1, stagione: -1 },
+      about: "Un'infezione virale del naso e della gola. Passa da sola in 7-10 giorni. Gli antibiotici non servono.",
+      care: ["Lavaggi nasali con soluzione fisiologica", "Bevi molto, anche bevande calde", "Riposa e tieni l'ambiente umidificato"],
+      meds: [
+        { ing: "Soluzione fisiologica o acqua di mare spray", for: "Per liberare il naso", w: "Va bene anche più volte al giorno, è il primo passo." },
+        { ...PARACETAMOLO, for: "Per malessere e febbre leggera" },
+        { ing: "Decongestionante nasale spray (es. xilometazolina, oximetazolina)", for: "Solo se il naso è molto chiuso", w: "Non usarlo più di 5 giorni di fila: poi peggiora la congestione. Evitalo se hai pressione alta, glaucoma o problemi di cuore." },
+      ],
+      doctor: "Se dopo 10 giorni non migliora, se compare febbre alta o dolore forte a orecchie o seni nasali.",
+    },
+    influenza: {
+      name: "Influenza",
+      w: { febbre_alta: 3, dolori: 3, stanchezza: 2, testa: 1, tosse: 1, gola: .5, naso: .5, stagione: -1, bruciore: -1 },
+      about: "Un virus che arriva di colpo con febbre alta e dolori. Di solito dura 3-5 giorni di febbre e una o due settimane di stanchezza. Gli antibiotici non servono.",
+      care: ["Riposo a letto finché c'è febbre", "Bevi spesso: acqua, brodi, tisane", "Resta a casa per non contagiare gli altri"],
+      meds: [
+        { ...PARACETAMOLO, for: "Per abbassare la febbre e i dolori" },
+        { ...IBUPROFENE, for: "In alternativa, per febbre e dolori muscolari" },
+      ],
+      doctor: "Se la febbre dura più di 3 giorni, se fai fatica a respirare, se hai più di 65 anni o una malattia cronica.",
+    },
+    faringite: {
+      name: "Mal di gola (faringite)",
+      w: { gola: 3, febbre_bassa: 1, tosse: .5, naso: .5, febbre_alta: .5, stagione: -1, bruciore: -.5 },
+      about: "Un'infiammazione della gola, quasi sempre virale. Migliora in pochi giorni.",
+      care: ["Bevande tiepide e miele", "Gargarismi con acqua tiepida e sale", "Non fumare e riposa la voce"],
+      meds: [
+        { ing: "Pastiglie o spray per la gola (flurbiprofene o benzidamina)", for: "Per il dolore locale", w: "Il flurbiprofene è un antinfiammatorio come l'ibuprofene: valgono le stesse cautele per stomaco e asma." },
+        { ...PARACETAMOLO, for: "Per dolore e febbre" },
+      ],
+      doctor: "Se vedi placche bianche sulle tonsille con febbre alta e senza tosse, se fai fatica ad aprire la bocca o a deglutire la saliva, o se dura più di una settimana.",
+    },
+    cefalea: {
+      name: "Mal di testa da tensione",
+      w: { testa: 3, fascia: 3, stanchezza: .5, febbre_alta: -2, naso: -.5, dolori: -.5 },
+      about: "Il mal di testa più comune: un dolore sordo, ai due lati, legato a stress, postura, poco sonno o tanto schermo.",
+      care: ["Fai una pausa dallo schermo e cambia posizione", "Bevi acqua: anche la disidratazione lo scatena", "Massaggia collo e spalle, prova una doccia calda"],
+      meds: [
+        { ...PARACETAMOLO, for: "Per il dolore" },
+        { ...IBUPROFENE, for: "In alternativa, per il dolore" },
+      ],
+      extra: "Non prendere antidolorifici per il mal di testa più di 10 giorni al mese: l'abuso stesso causa altro mal di testa.",
+      doctor: "Se il mal di testa è nuovo per te dopo i 50 anni, se cambia carattere, se ti sveglia di notte o se compare con febbre e collo rigido.",
+    },
+    reflusso: {
+      name: "Acidità di stomaco (reflusso)",
+      w: { bruciore: 3, pasto: 3, nausea: 1, tosse: .3, febbre_alta: -2, febbre_bassa: -1, naso: -1 },
+      about: "L'acido dello stomaco risale verso l'esofago. È frequente dopo pasti abbondanti, cibi grassi, caffè, alcol o stress.",
+      care: ["Pasti più piccoli, e non sdraiarti per 2-3 ore dopo mangiato", "Alza un po' la testata del letto", "Riduci caffè, alcol, cioccolato, fritti e fumo"],
+      meds: [
+        { ing: "Alginati (formano una barriera sopra il contenuto dello stomaco)", for: "Dopo i pasti e prima di dormire", w: "Contengono sodio o calcio: chiedi al farmacista se segui una dieta povera di sale." },
+        { ing: "Antiacidi (idrossido di magnesio e alluminio, carbonato di calcio)", for: "Per un sollievo rapido al bisogno", w: "Possono ridurre l'assorbimento di altri farmaci: prendili a 2 ore di distanza. Chiedi al farmacista se hai problemi ai reni." },
+      ],
+      doctor: "Se dura più di 2 settimane, se fai fatica a deglutire, se perdi peso o se il dolore va verso braccio o mandibola.",
+    },
+    allergia: {
+      name: "Allergia stagionale (rinite allergica)",
+      w: { stagione: 3, occhi: 3, starnuti: 2, naso: 2, febbre_bassa: -2, febbre_alta: -3, dolori: -1, gola: -.5 },
+      about: "Il sistema immunitario reagisce a pollini, polvere o peli di animali. Non è contagiosa e torna quando torni a contatto con la causa.",
+      care: ["Lavaggi nasali per togliere i pollini", "Finestre chiuse nelle ore centrali dei giorni di picco", "Doccia e cambio vestiti quando rientri a casa"],
+      meds: [
+        { ing: "Antistaminico (cetirizina, loratadina)", for: "Per starnuti, naso che cola e prurito", w: "Può dare sonnolenza, la cetirizina più della loratadina: attenzione se guidi. Evita l'alcol." },
+        { ing: "Collirio con soluzione salina o lacrime artificiali", for: "Per gli occhi irritati", w: "Se porti le lenti a contatto toglile prima di usarlo." },
+      ],
+      doctor: "Se hai anche fischi al petto o fiato corto (può essere asma), o se i sintomi non migliorano con l'antistaminico.",
+    },
+    gastroenterite: {
+      name: "Gastroenterite (influenza intestinale)",
+      w: { diarrea: 3, nausea: 2, febbre_bassa: 1, dolori: .5, stanchezza: .5, bruciore: -.5, naso: -1 },
+      about: "Un'infezione dell'intestino, spesso virale. Passa in 2-3 giorni. Il rischio vero è perdere troppi liquidi.",
+      care: ["Bevi a piccoli sorsi e spesso", "Mangia leggero quando torna l'appetito: riso, pane, banane", "Lava bene le mani: è molto contagiosa"],
+      meds: [
+        { ing: "Sali reidratanti orali (in bustine da sciogliere in acqua)", for: "Per recuperare acqua e sali persi", w: "Sono il rimedio più importante. Scioglili esattamente nella quantità d'acqua indicata." },
+        { ing: "Loperamide", for: "Solo per adulti, se la diarrea ti impedisce di uscire", w: "Non usarla se hai febbre o sangue nelle feci, e smetti se dopo 2 giorni non migliora." },
+      ],
+      doctor: "Se non riesci a bere, se dura più di 3 giorni, se ci sono sangue o febbre alta, o se urini molto poco.",
+    },
+  };
+
+  const S = { step: 0, age: null, preg: null, chronic: null, flags: new Set(), sym: new Set(), dur: null };
+  const app = document.getElementById("app");
+  const rail = [...document.querySelectorAll("#rail i")];
+
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const radio = (name, val, label) =>
+    `<label class="opt"><input type="radio" name="${name}" id="${name}_${val}" value="${val}" ${S[name] === val ? "checked" : ""}><span>${label}</span></label>`;
+  const check = (set, id, label) =>
+    `<label class="opt"><input type="checkbox" id="${id}" data-id="${id}" ${set.has(id) ? "checked" : ""}><span>${esc(label)}</span></label>`;
+
+  function render() {
+    rail.forEach((r, i) => r.classList.toggle("on", i < Math.min(S.step + 1, 5)));
+    app.innerHTML = [intro, profile, flags, symptoms, duration, result][S.step]();
+    bind();
+    app.querySelector("h2")?.focus({ preventScroll: true });
+    scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+
+  function intro() {
+    return `<section class="card">
+      <h2 tabindex="-1">Che cosa ti senti?</h2>
+      <p>Rispondi a qualche domanda sui tuoi sintomi. Alla fine vedrai il disturbo comune che più ti somiglia, cosa puoi fare a casa e quali farmaci da banco chiedere in farmacia.</p>
+      <div class="notice info">
+        <b class="t">Cosa riconosce</b>
+        <p>Raffreddore, influenza, mal di gola, mal di testa da tensione, acidità di stomaco, allergia stagionale e gastroenterite.</p>
+      </div>
+      <p class="lead">Prima controlliamo che non ci siano segnali che richiedono un medico subito.</p>
+      <div class="actions"><span></span><button class="primary" data-go="1">Inizia</button></div>
+    </section>`;
+  }
+
+  function profile() {
+    const ok = S.age && S.chronic && (S.age === "minore" || S.preg);
+    return `<section class="card">
+      <span class="steplabel">Passo 1 di 4 · Chi sei</span>
+      <h2 tabindex="-1">Qualche informazione su di te</h2>
+      <fieldset><legend>Quanti anni hai?</legend><div class="opts">
+        ${radio("age", "minore", "Meno di 18")}${radio("age", "adulto", "18-64")}${radio("age", "anziano", "65 o più")}
+      </div></fieldset>
+      ${S.age && S.age !== "minore" ? `<fieldset><legend>Sei in gravidanza o allatti?</legend><div class="opts">
+        ${radio("preg", "si", "Sì")}${radio("preg", "no", "No")}${radio("preg", "nonapplicabile", "Non applicabile")}
+      </div></fieldset>` : ""}
+      <fieldset><legend>Hai malattie croniche o prendi farmaci ogni giorno?</legend><div class="opts">
+        ${radio("chronic", "si", "Sì")}${radio("chronic", "no", "No")}
+      </div></fieldset>
+      <div class="actions"><button class="ghost" data-go="0">Indietro</button><button class="primary" data-go="2" ${ok ? "" : "disabled"}>Avanti</button></div>
+    </section>`;
+  }
+
+  function flags() {
+    return `<section class="card">
+      <span class="steplabel">Passo 2 di 4 · Segnali d'allarme</span>
+      <h2 tabindex="-1">Hai qualcuno di questi sintomi?</h2>
+      <p class="lead">Seleziona tutti quelli che hai adesso. Se non ne hai nessuno, vai avanti.</p>
+      <div class="list danger">${RED_FLAGS.map(f => check(S.flags, f.id, f.t)).join("")}</div>
+      <div class="actions"><button class="ghost" data-go="1">Indietro</button><button class="primary" data-go="${S.flags.size ? 5 : 3}">${S.flags.size ? "Vedi cosa fare" : "Nessuno di questi, avanti"}</button></div>
+    </section>`;
+  }
+
+  function symptoms() {
+    return `<section class="card">
+      <span class="steplabel">Passo 3 di 4 · Sintomi</span>
+      <h2 tabindex="-1">Quali sintomi hai?</h2>
+      <p class="lead">Seleziona tutti quelli che hai. Più sei preciso, più il risultato è affidabile.</p>
+      <div class="list">${SYMPTOMS.map(s => check(S.sym, s.id, s.t)).join("")}</div>
+      <div class="actions"><button class="ghost" data-go="2">Indietro</button>
+        <span class="req">${S.sym.size} selezionati</span>
+        <button class="primary" data-go="4" ${S.sym.size ? "" : "disabled"}>Avanti</button></div>
+    </section>`;
+  }
+
+  function duration() {
+    return `<section class="card">
+      <span class="steplabel">Passo 4 di 4 · Durata</span>
+      <h2 tabindex="-1">Da quanto tempo hai questi sintomi?</h2>
+      <fieldset><legend class="lead" style="font-weight:400">Scegli una risposta</legend><div class="opts">
+        ${radio("dur", "1", "Da 1-2 giorni")}${radio("dur", "2", "Da 3-7 giorni")}${radio("dur", "3", "Da più di 10 giorni")}
+      </div></fieldset>
+      <div class="actions"><button class="ghost" data-go="3">Indietro</button><button class="primary" data-go="5" ${S.dur ? "" : "disabled"}>Vedi il risultato</button></div>
+    </section>`;
+  }
+
+  function score() {
+    return Object.entries(CONDITIONS).map(([k, c]) => {
+      const max = Object.values(c.w).filter(v => v > 0).reduce((a, b) => a + b, 0);
+      const got = [...S.sym].reduce((a, s) => a + (c.w[s] || 0), 0);
+      return { k, c, p: Math.max(0, Math.min(1, got / max)) };
+    }).sort((a, b) => b.p - a.p);
+  }
+
+  function result() {
+    const restart = `<div class="actions"><button class="ghost" data-back="${S.flags.size ? 2 : 4}">Modifica le risposte</button><button class="primary" data-reset>Ricomincia</button></div>`;
+
+    if (S.flags.size) {
+      const sel = RED_FLAGS.filter(f => S.flags.has(f.id));
+      const em = sel.some(f => f.em);
+      return `<section class="card">
+        <span class="steplabel">Risultato</span>
+        <h2 tabindex="-1">${em ? "Questi sintomi vanno visti subito" : "Fatti vedere da un medico oggi"}</h2>
+        <div class="notice alert">
+          ${em ? `<span class="big">112</span><p><b>Chiama il 112 o vai al pronto soccorso.</b> Non guidare da solo e non aspettare che passi.</p>`
+               : `<p><b>Contatta oggi il tuo medico di base.</b> Se è sera o festivo chiama la guardia medica: in molte regioni risponde il 116117.</p>`}
+          <ul>${sel.map(f => `<li>${esc(f.t)}</li>`).join("")}</ul>
+        </div>
+        <p>Con questi segnali il quiz non prova a indovinare il disturbo e non suggerisce farmaci: serve una visita.</p>
+        ${restart}
+      </section>`;
+    }
+
+    const ranked = score();
+    const top = ranked[0];
+    const noMeds = S.age === "minore" || S.preg === "si";
+    const pct = p => Math.round(p * 100) + "%";
+
+    if (top.p < .35) {
+      return `<section class="card">
+        <span class="steplabel">Risultato</span>
+        <h2 tabindex="-1">I tuoi sintomi non somigliano abbastanza a un disturbo comune</h2>
+        <p>La combinazione che hai scelto non corrisponde bene a nessuno dei disturbi che il quiz conosce. È meglio parlarne con il medico o con il farmacista, che possono farti domande più precise.</p>
+        ${restart}
+      </section>`;
+    }
+
+    const c = top.c;
+    return `<section class="card">
+      <span class="steplabel">Risultato</span>
+      <h2 tabindex="-1">Assomiglia a: ${esc(c.name)}</h2>
+      <p>${esc(c.about)}</p>
+      <div class="match" aria-label="Somiglianza con ciascun disturbo">
+        ${ranked.slice(0, 3).map((r, i) => `<div class="row ${i ? "" : "top"}"><span>${esc(r.c.name.replace(/ \(.+\)/, ""))}</span><div class="bar"><i style="width:${pct(r.p)}"></i></div><span class="pct">${pct(r.p)}</span></div>`).join("")}
+      </div>
+      ${S.dur === "3" ? `<div class="notice warn"><b class="t">Dura da più di 10 giorni</b><p>Un disturbo comune di solito migliora prima. Fatti vedere dal medico anche se i sintomi sono lievi.</p></div>` : ""}
+    </section>
+
+    <section class="card">
+      <h3>Cosa puoi fare a casa</h3>
+      <ul class="care">${c.care.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+    </section>
+
+    <section class="card">
+      <h3>Farmaci da banco da chiedere in farmacia</h3>
+      ${noMeds ? `<div class="notice warn"><b class="t">Niente suggerimenti di farmaci per te</b><p>${S.age === "minore" ? "Per chi ha meno di 18 anni dosi e principi attivi cambiano: chiedi al pediatra, al medico o al farmacista." : "In gravidanza e allattamento molti farmaci da banco non sono adatti: chiedi al medico o al farmacista prima di prendere qualsiasi cosa."}</p></div>`
+      : `${S.chronic === "si" ? `<div class="notice warn"><b class="t">Prendi altri farmaci o hai una malattia cronica</b><p>Mostra questo elenco al farmacista prima di comprare: alcuni farmaci da banco interagiscono con anticoagulanti, farmaci per la pressione, il cuore o il diabete.</p></div>` : ""}
+        ${S.age === "anziano" ? `<div class="notice warn"><p>Dopo i 65 anni reni e stomaco sono più sensibili, soprattutto all'ibuprofene. Chiedi conferma al farmacista.</p></div>` : ""}
+        <div class="meds">${c.meds.map(m => `<div class="med"><span class="ing">${esc(m.ing)}</span><span class="for">${esc(m.for)}</span><span class="w">${esc(m.w)}</span></div>`).join("")}</div>
+        ${c.extra ? `<p><b>${esc(c.extra)}</b></p>` : ""}
+        <p class="lead">Qui trovi solo il principio attivo. La dose giusta per te è sul foglietto illustrativo, oppure chiedila al farmacista.</p>`}
+    </section>
+
+    <section class="card">
+      <div class="notice alert"><b class="t">Quando andare dal medico</b><p>${esc(c.doctor)}</p></div>
+      ${restart}
+    </section>`;
+  }
+
+  function bind() {
+    app.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => { S.step = +b.dataset.go; render(); }));
+    app.querySelectorAll("[data-back]").forEach(b => b.addEventListener("click", () => { S.step = +b.dataset.back; render(); }));
+    app.querySelectorAll("[data-reset]").forEach(b => b.addEventListener("click", () => {
+      Object.assign(S, { step: 0, age: null, preg: null, chronic: null, dur: null }); S.flags.clear(); S.sym.clear(); render();
+    }));
+    app.querySelectorAll('input[type="radio"]').forEach(r => r.addEventListener("change", () => {
+      S[r.name] = r.value;
+      if (r.name === "age" && r.value === "minore") S.preg = null;
+      const keep = r.id; render(); document.getElementById(keep)?.focus();
+    }));
+    app.querySelectorAll('input[type="checkbox"]').forEach(c => c.addEventListener("change", () => {
+      const set = S.step === 2 ? S.flags : S.sym;
+      c.checked ? set.add(c.dataset.id) : set.delete(c.dataset.id);
+      const y = scrollY, keep = c.id;
+      app.innerHTML = [intro, profile, flags, symptoms, duration, result][S.step]();
+      bind(); scrollTo(0, y); document.getElementById(keep)?.focus({ preventScroll: true });
+    }));
+  }
+
+  render();
+})();
+</script>
+
+</body>
+</html>

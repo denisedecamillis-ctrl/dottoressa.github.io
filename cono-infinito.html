@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Cono Infinito</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shrikhand&family=Figtree:wght@400;600;800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a one-screen gelateria counter. Thin header, tiled wall as the play field, receipt slides in on game over. */
+:root {
+  --bg: #E3EEE2;        /* pistachio-tinted wall */
+  --tile: #D2E2D1;
+  --ink: #1F2D26;
+  --muted: #5A6C62;
+  --accent: #D23C68;    /* raspberry sign */
+  --panel: #F8FBF6;
+  --rule: #C3D4C3;
+  --paper: #FFFDF8;
+  --paper-ink: #2A2622;
+  --f-display: "Shrikhand", "Cooper Black", Georgia, serif;
+  --f-body: "Figtree", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #12201A; --tile: #182A22; --ink: #E7F0E8; --muted: #93A89B;
+    --accent: #FF6E94; --panel: #1B2B24; --rule: #2A3F35;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #12201A; --tile: #182A22; --ink: #E7F0E8; --muted: #93A89B;
+  --accent: #FF6E94; --panel: #1B2B24; --rule: #2A3F35;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body);
+  display: flex; flex-direction: column; overflow: hidden;
+  -webkit-tap-highlight-color: transparent; user-select: none;
+}
+header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--rule); background: var(--panel);
+}
+.brand { font-family: var(--f-display); font-size: 1.6rem; color: var(--accent); line-height: 1; letter-spacing: .01em; }
+.hud { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.stat b { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.stat span, .flavor span { font-size: .66rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 600; }
+.flavor { display: flex; flex-direction: column; gap: 3px; min-width: 104px; }
+.flavor b { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: .95rem; }
+.swatch { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,.18); background: #ccc; }
+
+#stage { position: relative; flex: 1; min-height: 0; cursor: pointer; touch-action: manipulation; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.overlay {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  cursor: default;
+}
+.card {
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 18px;
+  padding: 26px 26px 22px; max-width: 360px; width: 100%;
+  display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 18px 40px -20px rgba(20,40,30,.35);
+}
+.card h1 { font-family: var(--f-display); font-weight: 400; font-size: 2.3rem; line-height: 1.05; color: var(--accent); text-wrap: balance; margin: 0; }
+.card p { margin: 0; line-height: 1.5; color: var(--ink); }
+.card .hint { font-size: .85rem; color: var(--muted); }
+kbd { font-family: var(--f-mono); font-size: .8em; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; background: var(--bg); }
+
+button.go {
+  font: 800 1.05rem var(--f-body); color: #fff; background: var(--accent);
+  border: 0; border-radius: 999px; padding: 13px 22px; cursor: pointer;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 60%, #000);
+  transition: transform .08s, box-shadow .08s;
+}
+button.go:active { transform: translateY(3px); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 60%, #000); }
+button.go:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* Receipt: paper stays paper in both themes */
+.receipt {
+  background: var(--paper); color: var(--paper-ink); font-family: var(--f-mono); font-size: .82rem;
+  max-width: 320px; width: 100%; padding: 22px 20px 18px;
+  display: flex; flex-direction: column; gap: 10px;
+  -webkit-mask: radial-gradient(circle 6px at 50% 100%, transparent 98%, #000) 0 0 / 14px 100% repeat-x;
+          mask: radial-gradient(circle 6px at 50% 100%, transparent 98%, #000) 0 0 / 14px 100% repeat-x;
+  padding-bottom: 26px;
+  box-shadow: 0 18px 40px -18px rgba(0,0,0,.45);
+  animation: print .5s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes print { from { transform: translateY(-14px); } to { transform: none; } }
+.receipt .shop { text-align: center; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.receipt .meta { text-align: center; color: #6d665e; font-size: .74rem; }
+.receipt hr { border: 0; border-top: 1px dashed #b9b0a4; margin: 2px 0; width: 100%; }
+.receipt .rows { display: flex; flex-direction: column; gap: 4px; max-height: 30vh; overflow-y: auto; }
+.receipt .row { display: flex; justify-content: space-between; gap: 10px; font-variant-numeric: tabular-nums; }
+.receipt .total { font-weight: 600; font-size: .95rem; }
+.receipt .verdict { font-family: var(--f-display); font-size: 1.5rem; text-align: center; color: #C3315B; line-height: 1.1; padding-block: 4px; }
+.receipt .note { text-align: center; color: #6d665e; font-size: .74rem; }
+.receipt button.go { font-family: var(--f-body); margin-top: 4px; background: #C3315B; box-shadow: 0 4px 0 #7d1d39; }
+
+@media (max-width: 480px) {
+  .brand { font-size: 1.3rem; }
+  .hud { gap: 12px; }
+  .flavor { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .receipt { animation: none; } }
+</style>
+
+</head>
+<body>
+<header>
+  <div class="brand">Cono Infinito</div>
+  <div class="hud">
+    <div class="flavor"><span>Gusto</span><b><i class="swatch" id="swatch"></i><em id="flavorName" style="font-style:normal">Pistacchio</em></b></div>
+    <div class="stat"><span>Palline</span><b id="score">0</b></div>
+    <div class="stat"><span>Record</span><b id="best">0</b></div>
+  </div>
+</header>
+
+<main id="stage" aria-label="Area di gioco: tocca per far cadere la pallina">
+  <canvas id="c"></canvas>
+
+  <div class="overlay" id="intro">
+    <div class="card">
+      <h1>Quante palline regge il tuo cono?</h1>
+      <p>La pallina scivola sopra il cono. Tocca lo schermo o premi <kbd>Spazio</kbd> per farla cadere.</p>
+      <p class="hint">Quello che sborda cola via e la pallina successiva si restringe. Centrala in pieno per un <b>Perfetto!</b>: la pallina torna più grande.</p>
+      <button class="go" id="startBtn">Ordina il primo gusto</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="over" hidden>
+    <div class="receipt" role="dialog" aria-label="Scontrino della partita">
+      <div class="shop">Gelateria Cono Infinito</div>
+      <div class="meta" id="rDate"></div>
+      <hr>
+      <div class="rows" id="rRows"></div>
+      <hr>
+      <div class="row total"><span>TOTALE</span><span id="rTotal"></span></div>
+      <div class="verdict" id="rVerdict"></div>
+      <div class="note" id="rNote"></div>
+      <button class="go" id="againBtn">Un altro cono</button>
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+  const FLAVORS = [
+    { name: "Pistacchio",    c: "#A8C26A", d: "#7E9A44" },
+    { name: "Fragola",       c: "#F2899F", d: "#C95C74" },
+    { name: "Stracciatella", c: "#F6EFDF", d: "#CFC3A6", chips: "#3B2418" },
+    { name: "Cioccolato",    c: "#6E402E", d: "#4A2619" },
+    { name: "Limone",        c: "#F5E27A", d: "#CDB64A" },
+    { name: "Nocciola",      c: "#C99B6B", d: "#9A7146" },
+    { name: "Amarena",       c: "#F3E6EA", d: "#C9A9B3", swirl: "#9E1F43" },
+    { name: "Fiordilatte",   c: "#FCF9F1", d: "#D9D1BF" },
+    { name: "Mango",         c: "#F8AE45", d: "#CC8420" },
+    { name: "Puffo",         c: "#5DB6EA", d: "#2F86BC" },
+    { name: "Bacio",         c: "#8A5A3E", d: "#5E3923", chips: "#C99B6B" },
+  ];
+  const SPRINKLES = ["#F2899F", "#5DB6EA", "#F5E27A", "#A8C26A", "#FFFFFF", "#F8AE45"];
+
+  const SH = 40, STEP = SH * 0.72, CONE_H = 150, CONE_W = 108, MAXW = 132;
+  const PRICE_CONO = 2.0, PRICE_PALLINA = 0.9;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const $ = id => document.getElementById(id);
+  const stage = $("stage"), cv = $("c"), ctx = cv.getContext("2d");
+  let W = 0, H = 0, dpr = 1;
+
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  }
+  new ResizeObserver(resize).observe(stage);
+
+  let theme = {};
+  function readTheme() {
+    const s = getComputedStyle(document.documentElement);
+    theme = { bg: s.getPropertyValue("--bg").trim(), tile: s.getPropertyValue("--tile").trim(),
+              ink: s.getPropertyValue("--ink").trim(), accent: s.getPropertyValue("--accent").trim() };
+  }
+
+  let best = 0;
+  try { best = +localStorage.getItem("cono-best") || 0; } catch (e) {}
+
+  let S;
+  function fresh(mode) {
+    return { mode, stack: [], cur: null, debris: [], parts: [], pops: [], cam: 0, shake: 0, combo: 0, t: 0, lastFlavor: -1 };
+  }
+
+  const scoopWy = i => CONE_H + SH * 0.3 + i * STEP;
+  const sx = x => W / 2 + x;
+  const sy = wy => H - 34 - (wy - S.cam);
+  const speed = () => Math.min(470, 150 + S.stack.length * 9);
+
+  function pickFlavor() {
+    let f;
+    do { f = Math.floor(Math.random() * FLAVORS.length); } while (f === S.lastFlavor);
+    S.lastFlavor = f;
+    return f;
+  }
+
+  function spawn() {
+    const i = S.stack.length;
+    const w = i ? S.stack[i - 1].w : MAXW;
+    const left = i % 2 === 0;
+    const lim = Math.min(W / 2 - w / 2 - 12, 250);
+    const f = pickFlavor();
+    S.cur = { x: left ? -lim : lim, dir: left ? 1 : -1, w, f, seed: Math.random() * 1000,
+              wy: scoopWy(i) + SH * 1.7, target: scoopWy(i), falling: false, vy: 0 };
+    $("flavorName").textContent = FLAVORS[f].name;
+    $("swatch").style.background = FLAVORS[f].c;
+  }
+
+  function drop() {
+    if (S.mode !== "play" || !S.cur || S.cur.falling) return;
+    S.cur.falling = true; S.cur.vy = 300;
+  }
+
+  function land() {
+    const c = S.cur, i = S.stack.length;
+    const base = i ? S.stack[i - 1] : { x: 0, w: CONE_W + 12 };
+    const L = Math.max(c.x - c.w / 2, base.x - base.w / 2);
+    const R = Math.min(c.x + c.w / 2, base.x + base.w / 2);
+    const ov = R - L, dx = c.x - base.x;
+
+    if (ov < 10) {
+      S.debris.push({ x: c.x, wy: c.target, w: c.w, f: c.f, seed: c.seed, vx: Math.sign(dx || 1) * 140, vy: 120, rot: 0, vr: Math.sign(dx || 1) * 4 });
+      S.cur = null; S.mode = "falling"; S.shake = 10;
+      setTimeout(gameOver, 900);
+      return;
+    }
+
+    let x, w;
+    if (Math.abs(dx) <= 4) {
+      S.combo++;
+      x = base.x; w = Math.min(MAXW, c.w + 6 + S.combo * 2);
+      burst(x, c.target + SH * 0.3, 22 + S.combo * 4);
+      S.pops.push({ text: S.combo > 1 ? `Perfetto! ×${S.combo}` : "Perfetto!", x, wy: c.target + SH, life: 1 });
+    } else {
+      S.combo = 0;
+      x = (L + R) / 2; w = ov;
+      const right = dx > 0;
+      const a = right ? R : c.x - c.w / 2, b = right ? c.x + c.w / 2 : L;
+      S.debris.push({ x: (a + b) / 2, wy: c.target, w: b - a, f: c.f, seed: c.seed, vx: (right ? 1 : -1) * 90, vy: 40, rot: 0, vr: (right ? 1 : -1) * 3 });
+    }
+    S.stack.push({ x, w, f: c.f, seed: c.seed, squash: 0.35 });
+    S.shake = reduced ? 0 : 4;
+    $("score").textContent = S.stack.length;
+    if (S.stack.length > best) { best = S.stack.length; $("best").textContent = best; try { localStorage.setItem("cono-best", best); } catch (e) {} }
+    spawn();
+  }
+
+  function burst(x, wy, n) {
+    if (reduced) n = Math.min(n, 8);
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI, v = 160 + Math.random() * 260;
+      S.parts.push({ x, wy, vx: Math.cos(a) * v * (Math.random() < .5 ? -1 : 1), vy: Math.sin(a) * v,
+                     rot: Math.random() * 6, vr: (Math.random() - .5) * 12, c: SPRINKLES[k % SPRINKLES.length], life: 1 });
+    }
+  }
+
+  function update(dt) {
+    S.t += dt;
+    const c = S.cur;
+    if (c) {
+      if (!c.falling) {
+        const lim = Math.min(W / 2 - c.w / 2 - 12, 250);
+        c.x += c.dir * speed() * dt;
+        if (c.x > lim) { c.x = lim; c.dir = -1; }
+        if (c.x < -lim) { c.x = -lim; c.dir = 1; }
+        c.wy = c.target + SH * 1.7 + Math.sin(S.t * 5) * 3;
+      } else {
+        c.vy += 2800 * dt; c.wy -= c.vy * dt;
+        if (c.wy <= c.target) { c.wy = c.target; land(); }
+      }
+    }
+    for (const s of S.stack) s.squash += (0 - s.squash) * Math.min(1, dt * 12);
+    for (const d of S.debris) { d.vy += 1800 * dt; d.wy -= d.vy * dt; d.x += d.vx * dt; d.rot += d.vr * dt; }
+    S.debris = S.debris.filter(d => sy(d.wy) < H + 200);
+    for (const p of S.parts) { p.vy -= 900 * dt; p.x += p.vx * dt; p.wy += p.vy * dt; p.rot += p.vr * dt; p.life -= dt * .9; }
+    S.parts = S.parts.filter(p => p.life > 0);
+    for (const p of S.pops) { p.wy += 50 * dt; p.life -= dt * 1.1; }
+    S.pops = S.pops.filter(p => p.life > 0);
+    const top = S.stack.length ? scoopWy(S.stack.length) : 0;
+    const target = Math.max(0, top - H * 0.52);
+    S.cam += (target - S.cam) * Math.min(1, dt * 4);
+    S.shake *= Math.pow(0.002, dt);
+  }
+
+  function rand(seed, k) { const v = Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); }
+
+  function drawScoop(x, y, w, f, seed, rot = 0, squash = 0) {
+    const F = FLAVORS[f], h = SH * (1 - squash * .35), ww = w * (1 + squash * .18);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    const lip = h * 0.18;
+    ctx.beginPath();
+    ctx.ellipse(0, lip, ww / 2, h / 2 + lip, 0, Math.PI, 0);
+    const n = Math.max(2, Math.round(ww / 15)), seg = ww / n;
+    for (let k = 0; k < n; k++) {
+      const x0 = ww / 2 - k * seg;
+      const drip = 6 + rand(seed, k) * 7;
+      ctx.quadraticCurveTo(x0 - seg / 2, lip + drip, x0 - seg, lip);
+    }
+    ctx.closePath();
+    ctx.fillStyle = F.c; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = F.d; ctx.stroke();
+    ctx.save(); ctx.clip();
+    if (F.chips) {
+      ctx.fillStyle = F.chips;
+      const m = Math.max(3, Math.round(ww / 10));
+      for (let k = 0; k < m; k++) {
+        const cx = (rand(seed, k + 20) - .5) * ww * .85, cy = (rand(seed, k + 40) - .6) * h * .9;
+        ctx.fillRect(cx, cy, 3 + rand(seed, k) * 3, 2);
+      }
+    }
+    if (F.swirl) {
+      ctx.strokeStyle = F.swirl; ctx.lineWidth = 3.5; ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-ww * .4, h * .05);
+      ctx.bezierCurveTo(-ww * .15, -h * .45, ww * .1, h * .25, ww * .38, -h * .2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(0,0,0,.08)";
+    ctx.fillRect(-ww / 2, lip - 4, ww, 12);
+    ctx.restore();
+    ctx.fillStyle = "rgba(255,255,255,.4)";
+    ctx.beginPath(); ctx.ellipse(-ww * .22, -h * .2, Math.max(3, ww * .12), h * .1, -.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCone() {
+    const top = sy(CONE_H), tip = sy(0), cx = sx(0);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx - CONE_W / 2, top); ctx.lineTo(cx + CONE_W / 2, top);
+    ctx.quadraticCurveTo(cx + 6, tip - 10, cx, tip);
+    ctx.quadraticCurveTo(cx - 6, tip - 10, cx - CONE_W / 2, top);
+    ctx.closePath();
+    ctx.fillStyle = "#DDA75E"; ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = "#B97F38"; ctx.lineWidth = 2.5;
+    for (let k = -8; k <= 8; k++) {
+      ctx.beginPath(); ctx.moveTo(cx + k * 18 - 80, top); ctx.lineTo(cx + k * 18 + 80, tip); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + k * 18 + 80, top); ctx.lineTo(cx + k * 18 - 80, tip); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = "#C98F45";
+    ctx.beginPath(); ctx.roundRect(cx - CONE_W / 2 - 5, top - 6, CONE_W + 10, 16, 6); ctx.fill();
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = theme.bg; ctx.fillRect(0, 0, W, H);
+    // wall tiles, slow parallax
+    const T = 46, off = (S.cam * 0.4) % T;
+    ctx.strokeStyle = theme.tile; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = (W / 2) % T; x < W; x += T) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let y = H - off; y > -T; y -= T) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+
+    ctx.save();
+    if (S.shake > .3) ctx.translate((Math.random() - .5) * S.shake, (Math.random() - .5) * S.shake);
+    drawCone();
+    for (let i = 0; i < S.stack.length; i++) {
+      const s = S.stack[i], y = sy(scoopWy(i));
+      if (y < -60 || y > H + 60) continue;
+      drawScoop(sx(s.x), y, s.w, s.f, s.seed, 0, s.squash);
+    }
+    if (S.cur) {
+      const c = S.cur;
+      if (!c.falling) {
+        // landing shadow guide
+        ctx.fillStyle = "rgba(0,0,0,.10)";
+        ctx.beginPath(); ctx.ellipse(sx(c.x), sy(c.target) + 4, c.w / 2, 5, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      drawScoop(sx(c.x), sy(c.wy), c.w, c.f, c.seed);
+    }
+    for (const d of S.debris) drawScoop(sx(d.x), sy(d.wy), d.w, d.f, d.seed, d.rot);
+    for (const p of S.parts) {
+      ctx.save(); ctx.globalAlpha = Math.max(0, p.life); ctx.translate(sx(p.x), sy(p.wy)); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c; ctx.beginPath(); ctx.roundRect(-4, -1.5, 8, 3, 1.5); ctx.fill(); ctx.restore();
+    }
+    ctx.restore();
+
+    ctx.textAlign = "center";
+    for (const p of S.pops) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.5));
+      ctx.font = `${26 + (1 - p.life) * 8}px Shrikhand, "Cooper Black", serif`;
+      ctx.lineWidth = 5; ctx.strokeStyle = theme.bg; ctx.strokeText(p.text, sx(p.x), sy(p.wy));
+      ctx.fillStyle = theme.accent; ctx.fillText(p.text, sx(p.x), sy(p.wy));
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  const euro = v => v.toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+
+  function gameOver() {
+    S.mode = "over";
+    const n = S.stack.length;
+    const counts = {};
+    S.stack.forEach(s => counts[s.f] = (counts[s.f] || 0) + 1);
+    const rows = [`<div class="row"><span>1 × Cono cialda</span><span>${euro(PRICE_CONO)}</span></div>`];
+    Object.entries(counts).sort((a, b) => b[1] - a[1]).forEach(([f, c]) => {
+      rows.push(`<div class="row"><span>${c} × ${FLAVORS[f].name}</span><span>${euro(c * PRICE_PALLINA)}</span></div>`);
+    });
+    $("rRows").innerHTML = rows.join("");
+    $("rTotal").textContent = euro(PRICE_CONO + n * PRICE_PALLINA);
+    $("rDate").textContent = new Date().toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" }) + " · Banco 1";
+    $("rVerdict").textContent =
+      n === 0 ? "Cono vuoto." :
+      n < 5 ? "Un assaggino." :
+      n < 12 ? "Bel cono!" :
+      n < 25 ? "Mano da gelatiere." : "Leggenda del banco.";
+    $("rNote").textContent = n >= best && n > 0 ? `Nuovo record: ${n} palline` : `Record: ${best} palline · ne hai impilate ${n}`;
+    $("over").hidden = false;
+    $("againBtn").focus();
+  }
+
+  function start() {
+    S = fresh("play");
+    $("score").textContent = 0;
+    $("intro").hidden = true; $("over").hidden = true;
+    spawn();
+  }
+
+  stage.addEventListener("pointerdown", e => {
+    if (e.target.closest(".overlay")) return;
+    drop();
+  });
+  addEventListener("keydown", e => {
+    if (e.code === "Space" || e.code === "Enter") {
+      if (S.mode === "play") { e.preventDefault(); drop(); }
+    }
+  });
+  $("startBtn").addEventListener("click", start);
+  $("againBtn").addEventListener("click", start);
+
+  function boot(data) {
+    if (data && data.best > best) best = data.best;
+    $("best").textContent = best;
+    resize(); readTheme();
+    S = fresh("ready");
+    // a few demo scoops behind the intro card so the cone looks inviting
+    [1, 0, 9].forEach((f, i) => S.stack.push({ x: [0, -6, 4][i], w: [124, 114, 100][i], f, seed: i * 31, squash: 0 }));
+    spawn();
+    let last = performance.now(), frame = 0;
+    (function loop(now) {
+      const dt = Math.min(0.033, (now - last) / 1000); last = now;
+      if (++frame % 30 === 0) readTheme();
+      update(dt); draw();
+      requestAnimationFrame(loop);
+    })(last);
+  }
+
+  window.claude?.hot?.snapshot?.(() => ({ best }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body>
+</html>
