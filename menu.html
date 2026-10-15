@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Le mie app</title>
+<style>
+:root { --bg:#F3F5FB; --surface:#FFFFFF; --ink:#14204A; --muted:#566089; --rule:#D9DFF0; --accent:#2447C8; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0D1330; --surface:#161F4A; --ink:#E8ECFB; --muted:#9AA5D0; --rule:#28336A; --accent:#86A2FF; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+  padding: 32px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+main { max-width: 560px; margin: 0 auto; display:flex; flex-direction:column; gap:22px; }
+h1 { font: 400 clamp(2.2rem,9vw,3.2rem)/1 Georgia,"Times New Roman",serif; margin:0; }
+p { margin:0; color:var(--muted); }
+.list { display:flex; flex-direction:column; gap:12px; }
+a.app { display:flex; flex-direction:column; gap:4px; padding:18px 20px; background:var(--surface); border:1.5px solid var(--rule); border-radius:16px; color:var(--ink); text-decoration:none; }
+a.app:hover, a.app:focus-visible { border-color:var(--accent); outline:none; }
+a.app:focus-visible { box-shadow:0 0 0 3px var(--accent); }
+a.app b { font-size:1.2rem; }
+a.app span { color:var(--muted); font-size:.95rem; }
+small { color:var(--muted); font-size:.82rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Le mie app</h1>
+  <p>Tre progetti realizzati con Claude Code. Tocca un'app per aprirla.</p>
+  <div class="list">
+    <a class="app" href="cono-infinito.html"><b>Cono Infinito</b><span>Il gioco: impila le palline di gelato più in alto che puoi.</span></a>
+    <a class="app" href="bussola-sintomi.html"><b>Bussola dei Sintomi</b><span>Un quiz sui disturbi comuni, con cure a casa e farmaci da banco.</span></a>
+    <a class="app" href="piatto-forte.html"><b>Piatto Forte</b><span>Sei domande e ricevi calorie, menu per 7 giorni e lista della spesa.</span></a>
+  </div>
+  <small>Bussola dei Sintomi e Piatto Forte sono progetti scolastici: le informazioni sono generali e non sostituiscono il parere di un medico o di un dietista.</small>
+</main>
+</body>
+</html>
